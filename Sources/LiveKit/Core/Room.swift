@@ -100,7 +100,7 @@ public class Room: MulticastDelegate<RoomDelegate> {
         log("connecting to room", .info)
 
         guard _state.localParticipant == nil else {
-            log("localParticipant is not nil", .warning)
+            log("localParticipant is not nil, connectionState: \(connectionState)", .warning)
             return Promise(EngineError.state(message: "localParticipant is not nil"))
         }
 
@@ -154,16 +154,15 @@ private extension Room {
 
         log("reason: \(String(describing: reason))")
 
-        return engine.cleanUp(reason: reason)
-            .then(on: .sdk) {
-                self.cleanUpParticipants()
-            }.then(on: .sdk) {
-                // reset state
-                self._state.mutate { $0 = State() }
-            }.catch(on: .sdk) { error in
-                // this should never happen
-                self.log("Engine cleanUp failed", .error)
-            }
+        return engine.cleanUp(reason: reason).then(on: .sdk) {
+            self.cleanUpParticipants()
+        }.then(on: .sdk) {
+            // reset state
+            self._state.mutate { $0 = State() }
+        }.catch(on: .sdk) { error in
+            // this should never happen
+            self.log("Engine cleanUp failed", .error)
+        }
     }
 
     @discardableResult
@@ -522,6 +521,11 @@ extension Room: EngineDelegate {
                     self.log("Failed to send track subscription permissions, error: \(error)", .error)
                 }
             }
+
+//            if case .disconnected = state.connectionState {
+//                //
+//                cleanUp(reason: .none)
+//            }
 
             notify { $0.room(self, didUpdate: state.connectionState, oldValue: oldState.connectionState) }
         }
